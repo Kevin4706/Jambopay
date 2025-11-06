@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Driveflow Enterprises - JamboPay Production Payment Server
-Deployed on GitHub Codespaces
+With Enhanced Error Handling
 """
 
 import http.server
@@ -11,7 +11,10 @@ import base64
 import os
 from datetime import datetime
 import requests
-from urllib.parse import urlparse
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
     
@@ -29,14 +32,13 @@ class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404)
     
     def process_payment(self):
-        """Process JamboPay payment with production credentials"""
+        """Process JamboPay payment with enhanced error handling"""
         try:
-            # Read and parse the request data
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             payment_data = json.loads(post_data.decode('utf-8'))
             
-            print(f"🔔 New payment request: {payment_data}")
+            logging.info(f"New payment request: {payment_data}")
             
             # Validate required fields
             required_fields = ['amount', 'currency', 'email', 'phone', 'description']
@@ -45,20 +47,9 @@ class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_error_response(f"Missing required field: {field}")
                     return
             
-            # Validate amount
-            try:
-                amount = float(payment_data['amount'])
-                if amount < 1:
-                    self.send_error_response("Minimum payment amount is 1.00")
-                    return
-            except ValueError:
-                self.send_error_response("Invalid amount format")
-                return
-            
-            # Process payment with JamboPay API
+            # Process payment
             result = self.process_jambopay_payment(payment_data)
             
-            # Send response
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -66,47 +57,44 @@ class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(result).encode('utf-8'))
             
         except Exception as e:
-            print(f"❌ Error processing payment: {str(e)}")
+            logging.error(f"Error processing payment: {str(e)}")
             self.send_error_response(f"Server error: {str(e)}")
     
     def generate_auth_header(self):
-        """Generate JamboPay production authentication header"""
+        """Generate JamboPay authentication header"""
         client_id = "fcf01a144b63d7c1e62bffd961fec23dabeed189756ec9dd19754f9df0169336"
         client_secret = "pui4LjypD2LT9JATQvIotGnEdQqbv5uSLQ818XmWIcSkFg=="
         
-        # For Basic Auth
         credentials = f"{client_id}:{client_secret}"
         encoded_credentials = base64.b64encode(credentials.encode()).decode()
         
         return {
             'Authorization': f'Basic {encoded_credentials}',
             'Content-Type': 'application/json',
-            'User-Agent': 'Driveflow-Enterprises/1.0'
+            'Accept': 'application/json'
         }
     
     def process_jambopay_payment(self, payment_data):
         """
-        Process payment using JamboPay PRODUCTION API
+        Process payment using JamboPay PRODUCTION API with better debugging
         """
         
-        # JamboPay PRODUCTION API configuration
         JAMBOPAY_CONFIG = {
             'base_url': 'https://api.jambopay.com',
             'timeout': 30
         }
         
         try:
-            # Generate unique transaction reference
+            # Generate transaction reference
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             transaction_ref = f"DRIVEFLOW_{timestamp}"
             
-            # Get Codespaces public URL for callbacks
-            codespace_url = os.getenv('CODESPACE_URL', 'https://your-codespace-3000.app.github.dev')
+            # Get current URL for callbacks
+            current_url = os.getenv('CODESPACE_URL', 'https://al-halibut-gv5qxg67g7v299xp-8000.app.github.dev')
             
-            # Prepare JamboPay PRODUCTION API request payload
+            # Enhanced payload - try different JamboPay formats
             jambopay_payload = {
-                'command': 'request',
-                'action': 'payment',
+                # Format 1: Standard payment request
                 'merchant': 'Driveflow Enterprises Live Cred',
                 'amount': payment_data['amount'],
                 'currency': payment_data['currency'],
@@ -114,86 +102,111 @@ class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
                 'reference': transaction_ref,
                 'email': payment_data['email'],
                 'phone': payment_data['phone'],
-                'callback_url': f'{codespace_url}/callback',
-                'redirect_url': f'{codespace_url}/success',
-                'metadata': {
-                    'customer_email': payment_data['email'],
-                    'customer_phone': payment_data['phone'],
-                    'business': 'Driveflow Enterprises',
-                    'source': 'github-codespaces'
-                }
+                'callback_url': f'{current_url}/callback',
+                'redirect_url': f'{current_url}/success',
+                
+                # Additional fields that might be required
+                'first_name': 'Customer',
+                'last_name': 'User',
+                'country': 'KE'
             }
             
-            print(f"📤 Sending to JamboPay Production: {json.dumps(jambopay_payload, indent=2)}")
+            logging.info(f"Sending payload to JamboPay: {json.dumps(jambopay_payload, indent=2)}")
             
-            # Make PRODUCTION API call to JamboPay
             headers = self.generate_auth_header()
             
-            api_url = f"{JAMBOPAY_CONFIG['base_url']}/v1/payments"
+            # Try different JamboPay endpoints
+            endpoints = [
+                f"{JAMBOPAY_CONFIG['base_url']}/v1/payments",
+                f"{JAMBOPAY_CONFIG['base_url']}/api/v1/payments",
+                f"{JAMBOPAY_CONFIG['base_url']}/checkout/create"
+            ]
             
-            response = requests.post(
-                api_url,
-                json=jambopay_payload,
-                headers=headers,
-                timeout=JAMBOPAY_CONFIG['timeout']
-            )
+            response = None
+            last_error = None
             
-            print(f"📥 JamboPay Production Response Status: {response.status_code}")
-            print(f"📥 JamboPay Production Response: {response.text}")
+            for endpoint in endpoints:
+                try:
+                    logging.info(f"Trying endpoint: {endpoint}")
+                    
+                    response = requests.post(
+                        endpoint,
+                        json=jambopay_payload,
+                        headers=headers,
+                        timeout=JAMBOPAY_CONFIG['timeout'],
+                        verify=True
+                    )
+                    
+                    logging.info(f"Response status: {response.status_code}")
+                    logging.info(f"Response headers: {dict(response.headers)}")
+                    logging.info(f"Response body: {response.text}")
+                    
+                    if response.status_code in [200, 201]:
+                        break
+                        
+                except requests.exceptions.RequestException as e:
+                    last_error = e
+                    logging.warning(f"Endpoint {endpoint} failed: {str(e)}")
+                    continue
+            
+            if response is None:
+                return {
+                    'success': False,
+                    'error': f'All API endpoints failed. Last error: {str(last_error)}'
+                }
+            
+            # Parse response
+            try:
+                api_response = response.json()
+            except:
+                api_response = {'raw_response': response.text}
             
             if response.status_code in [200, 201]:
-                api_response = response.json()
-                
-                # Handle JamboPay API response
                 if api_response.get('success') or api_response.get('status') == 'success':
                     return {
                         'success': True,
                         'transactionId': transaction_ref,
-                        'paymentUrl': api_response.get('payment_url') or api_response.get('checkout_url'),
+                        'paymentUrl': api_response.get('payment_url') or api_response.get('checkout_url') or api_response.get('url'),
                         'message': 'Payment initiated successfully',
                         'amount': payment_data['amount'],
                         'currency': payment_data['currency'],
                         'status': api_response.get('status', 'initiated'),
                         'timestamp': datetime.now().isoformat(),
-                        'apiResponse': api_response
+                        'debug': {
+                            'endpoint_used': endpoint,
+                            'response_code': response.status_code
+                        }
                     }
                 else:
                     error_msg = api_response.get('message') or api_response.get('error') or 'Payment initiation failed'
                     return {
                         'success': False,
                         'error': f'JamboPay API Error: {error_msg}',
-                        'apiResponse': api_response
+                        'debug': {
+                            'response': api_response,
+                            'status_code': response.status_code,
+                            'endpoint': endpoint
+                        }
                     }
             else:
                 error_msg = f"HTTP {response.status_code}"
-                try:
-                    error_detail = response.json()
-                    error_msg += f" - {error_detail.get('message', response.text)}"
-                except:
+                if isinstance(api_response, dict):
+                    error_msg += f" - {api_response.get('message', response.text)}"
+                else:
                     error_msg += f" - {response.text}"
                 
                 return {
                     'success': False,
-                    'error': f'API request failed: {error_msg}'
+                    'error': f'API request failed: {error_msg}',
+                    'debug': {
+                        'status_code': response.status_code,
+                        'response': api_response,
+                        'endpoint': endpoint
+                    }
                 }
             
-        except requests.exceptions.Timeout:
-            return {
-                'success': False,
-                'error': 'JamboPay API timeout - please try again'
-            }
-        except requests.exceptions.ConnectionError:
-            return {
-                'success': False,
-                'error': 'Network connection error - please check your connection'
-            }
-        except requests.exceptions.RequestException as e:
-            return {
-                'success': False,
-                'error': f'Network error: {str(e)}'
-            }
         except Exception as e:
-            print(f"❌ JamboPay processing error: {str(e)}")
+            logging.error(f"JamboPay processing error: {str(e)}")
             return {
                 'success': False,
                 'error': f'Payment processing failed: {str(e)}'
@@ -213,22 +226,21 @@ class JamboPayPaymentHandler(http.server.SimpleHTTPRequestHandler):
     
     def log_message(self, format, *args):
         """Custom log message format"""
-        print(f"🌐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {format % args}")
+        logging.info(format % args)
 
 def run_server():
     """Run the production payment server"""
     PORT = 8000
     
-    # Create the server
     with socketserver.TCPServer(("", PORT), JamboPayPaymentHandler) as httpd:
         print("🚀 Driveflow Enterprises - JamboPay Production Server")
-        print("=" * 50)
+        print("==================================================")
         print(f"📍 Local URL: http://localhost:{PORT}")
-        print(f"🌍 Public URL: https://{os.getenv('CODESPACE_NAME', 'your-codespace')}-{PORT}.app.github.dev")
+        print(f"🌍 Public URL: https://{os.getenv('CODESPACE_NAME', 'al-halibut-gv5qxg67g7v299xp')}-8000.app.github.dev")
         print("🔐 Using PRODUCTION JamboPay credentials")
         print("🏢 Merchant: Driveflow Enterprises Live Cred")
-        print("⏰ Server started at:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        print("=" * 50)
+        print("🐛 DEBUG MODE: Enhanced logging enabled")
+        print("==================================================")
         print("⏹️  Press Ctrl+C to stop the server")
         
         try:
