@@ -1,1 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driveflow Enterprises - JamboPay Payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .logo h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .logo .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            background: #fff;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .amount-input {
+            position: relative;
+        }
+        
+        .currency {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-weight: bold;
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .payment-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .payment-link:hover {
+            background: #218838;
+        }
+        
+        .security-notice {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Driveflow Enterprises</h1>
+            <div class="subtitle">Secure Payment Processing via JamboPay</div>
+        </div>
+        
+        <form id="paymentForm">
+            <div class="form-group">
+                <label for="amount">Amount</label>
+                <div class="amount-input">
+                    <input type="number" id="amount" name="amount" placeholder="0.00" step="0.01" min="1.00" required>
+                    <div class="currency">USD</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="currency">Currency</label>
+                <select id="currency" name="currency" required>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="KES">KES - Kenyan Shilling</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="+254700000000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Payment Description</label>
+                <input type="text" id="description" name="description" placeholder="Payment for services" required>
+            </div>
+            
+            <button type="submit" class="btn" id="payButton">
+                💳 Pay with JamboPay
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing with JamboPay...</p>
+        </div>
+        
+        <div class="message success" id="successMessage"></div>
+        <div class="message error" id="errorMessage"></div>
+        
+        <div class="security-notice">
+            🔒 Secure payment processed by JamboPay
+        </div>
+    </div>
 
+    <script>
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                amount: document.getElementById('amount').value,
+                currency: document.getElementById('currency').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                description: document.getElementById('description').value
+            };
+            
+            // Validate amount
+            if (parseFloat(formData.amount) < 1) {
+                alert('Minimum payment amount is 1.00');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('payButton').disabled = true;
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            try {
+                const response = await fetch('/process-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    let successHTML = `
+                        <strong>✅ Payment Initiated Successfully!</strong><br><br>
+                        <strong>Transaction ID:</strong> ${result.transactionId}<br>
+                        <strong>Amount:</strong> ${result.amount} ${result.currency}<br>
+                        <strong>Status:</strong> ${result.status || 'Pending'}
+                    `;
+                    
+                    if (result.paymentUrl) {
+                        successHTML += `<br><br>
+                        <a href="${result.paymentUrl}" target="_blank" class="payment-link">
+                            🔗 Complete Payment on JamboPay
+                        </a>`;
+                    }
+                    
+                    document.getElementById('successMessage').innerHTML = successHTML;
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // Clear form
+                    document.getElementById('paymentForm').reset();
+                    
+                } else {
+                    throw new Error(result.error || 'Payment initiation failed');
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').innerHTML = `
+                    <strong>❌ Payment Failed</strong><br><br>
+                    ${error.message}<br>
+                    Please check your details and try again.
+                `;
+                document.getElementById('errorMessage').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('payButton').disabled = false;
+            }
+        });
+
+        // Input validation
+        document.getElementById('amount').addEventListener('input', function(e) {
+            if (this.value < 1) {
+                this.setCustomValidity('Minimum amount is 1.00');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    </script>
+</body>
+</html>
